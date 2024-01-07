@@ -20,27 +20,24 @@ end
 function source:complete(params, callback)
 	local ctx = params.context
 	local schema_regex = "([^%.]+)%.+"
+	local suggestions = {}
 
 	-- match any non-whitespace character at the end of the line
 	local before = ctx.cursor_before_line:match("%S+$")
-	local nodes = self.queries:parse_node()
+	local nodes = self.queries:parse_node() or {}
 	print("nodes", vim.inspect(nodes))
-	-- if nodes then
-	-- 	-- TODO: add lookup in structure for materialization
-	-- 	-- (if we want to support more than just table)
 
-	-- 	local opts = {
-	-- 		schema = nodes[1],
-	-- 		table = nodes[2],
-	-- 		materialization = "table",
-	-- 	}
-	-- 	self.connection:get_columns(opts)
-	-- end
-
-	local suggestions = {}
-
+	-- User has ideally chosen table => suggest columns (bottom level)
+	if #nodes ~= 0 then
+		-- TODO: support multiple nodes
+		local opts = {
+			table = nodes[2],
+			schema = nodes[1],
+			materialization = "table",
+		}
+		suggestions = self.connection:get_columns(opts)
 	-- User has ideally chosen schema => suggest tables (middle level)
-	if before and before:match(schema_regex) then
+	elseif before and before:match(schema_regex) then
 		suggestions = self.connection:get_schema_leafs(before)
 	-- User is typing at the beginning of the line => suggest schemas (top level)
 	else
@@ -57,7 +54,11 @@ function source:complete(params, callback)
 	-- Transform suggestions into completion items
 	local completion_items = {}
 	for _, item in ipairs(suggestions) do
-		table.insert(completion_items, { label = item.name })
+		-- TODO: need to fix Name and name in backend PR
+		table.insert(completion_items, {
+			label = item.Name or item.name,
+			kind = "[DB]",
+		})
 	end
 
 	callback({ items = completion_items })

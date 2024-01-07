@@ -6,6 +6,7 @@ function Connection:new()
 	local cls = {
 		current_connection_id = nil,
 		structure = {},
+		columns = {},
 	}
 	setmetatable(cls, self)
 	self.__index = self
@@ -76,4 +77,22 @@ function Connection:get_schema_leafs(schema)
 	return {}
 end
 
+function Connection:get_columns(opts)
+	if not opts.schema or not opts.table then
+		return
+	end
+
+	local sha = self.current_connection_id .. "_" .. opts.schema .. "_" .. opts.table
+	if not self.columns[sha] then
+		print("caching columns for:", sha)
+		local columns = api.connection_get_columns(self.current_connection_id, opts)
+		if not columns then
+			self.columns[sha] = {}
+		end
+
+		self.columns[sha] = columns
+	end
+
+	return self.columns[sha]
+end
 return Connection
