@@ -4,6 +4,7 @@
 -- TODO: add documentation
 -- TODO: add readme
 -- TODO: add installation instructions
+-- TODO: add vim.notify or errors where appropriate
 
 local M = {}
 

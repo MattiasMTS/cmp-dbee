@@ -10,10 +10,6 @@ function Connection:new()
 	setmetatable(cls, self)
 	self.__index = self
 
-	-- add structure for the current connection async
-	cls:set_connection_id()
-	cls:set_structure()
-
 	-- listen to connection changes
 	api.register_event_listener("current_connection_changed", function(data)
 		cls:on_current_connection_changed(data)
@@ -28,7 +24,8 @@ function Connection:clear_cache()
 end
 
 function Connection:on_current_connection_changed(data)
-	print("connection changed!", "before:", self.current_connection_id, "after:", data.conn_id) -- TODO: remove later
+	-- TODO: remove later
+	print("connection changed!", "before:", self.current_connection_id, "after:", data.conn_id)
 
 	-- if the connection is changed => change the current connection id
 	if self.current_connection_id ~= data.conn_id then
@@ -44,15 +41,22 @@ end
 function Connection:set_connection_id()
 	vim.schedule(function()
 		local conn_id = api.get_current_connection()
+		if not conn_id then
+			vim.notify_once("No connection found.")
+			return
+		end
 		self.current_connection_id = conn_id.id
 	end)
 end
 
 function Connection:set_structure()
 	vim.schedule(function()
-		local conn_id = self.current_connection_id
-		local structure = api.connection_get_structure(conn_id)
-		self.structure[conn_id] = structure
+		if not self.current_connection_id then
+			return
+		end
+
+		local structure = api.connection_get_structure(self.current_connection_id)
+		self.structure[self.current_connection_id] = structure
 	end)
 end
 
@@ -60,7 +64,7 @@ function Connection:get_schemas()
 	return self.structure[self.current_connection_id]
 end
 
-function Connection:get_nodes(schema)
+function Connection:get_schema_leafs(schema)
 	local structure = self.structure[self.current_connection_id]
 	if structure then
 		for _, node in ipairs(structure) do
