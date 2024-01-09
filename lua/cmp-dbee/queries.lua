@@ -106,13 +106,23 @@ function Queries:parse_node(node)
 end
 
 function Queries:_parse(node)
-	local out = {}
+	local captures = {}
 	local start_row, start_col, _, _ = node:range()
 	local obj = vim.treesitter.query.parse(self.filetype, self.object_reference_query)
 
-	for _, o in obj:iter_captures(node, self.bufnr, start_row, start_col) do
-		local sql = vim.treesitter.get_node_text(o, self.bufnr)
-		table.insert(out, sql)
+	for _, node in obj:iter_captures(node, self.bufnr, start_row, start_col) do
+		local sql = vim.treesitter.get_node_text(node, self.bufnr)
+		table.insert(captures, sql)
+	end
+
+	local out = {}
+
+	for i = 1, #captures, 2 do
+		local model = {
+			schema = captures[i],
+			table = captures[i + 1],
+		}
+		table.insert(out, model)
 	end
 
 	return out
