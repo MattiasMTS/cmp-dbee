@@ -26,7 +26,7 @@ end
 
 function Connection:on_current_connection_changed(data)
 	-- TODO: remove later
-	print("connection changed!", "before:", self.current_connection_id, "after:", data.conn_id)
+	-- print("connection changed!", "before:", self.current_connection_id, "after:", data.conn_id)
 
 	-- if the connection is changed => change the current connection id
 	if self.current_connection_id ~= data.conn_id then
@@ -84,7 +84,6 @@ function Connection:get_columns(opts)
 
 	local sha = self.current_connection_id .. "_" .. opts.schema .. "_" .. opts.table
 	if not self.columns[sha] then
-		print("caching columns for:", sha)
 		local columns = api.connection_get_columns(self.current_connection_id, opts)
 		if not columns then
 			self.columns[sha] = {}
