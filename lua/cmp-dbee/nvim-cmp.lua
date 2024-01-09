@@ -25,17 +25,14 @@ function source:complete(params, callback)
 	-- match any non-whitespace character at the end of the line
 	local before = ctx.cursor_before_line:match("%S+$")
 	local nodes = self.queries:parse_node() or {}
-	print("nodes", vim.inspect(nodes))
+	-- print("nodes", vim.inspect(nodes))
 
 	-- User has ideally chosen table => suggest columns (bottom level)
 	if #nodes ~= 0 then
-		-- TODO: support multiple nodes
-		local opts = {
-			table = nodes[2],
-			schema = nodes[1],
-			materialization = "table",
-		}
-		suggestions = self.connection:get_columns(opts)
+		for _, node in ipairs(nodes) do
+			local columns = self.connection:get_columns(node) or {}
+			suggestions = vim.tbl_extend("force", suggestions, columns)
+		end
 	-- User has ideally chosen schema => suggest tables (middle level)
 	elseif before and before:match(schema_regex) then
 		suggestions = self.connection:get_schema_leafs(before)
@@ -49,14 +46,13 @@ function source:complete(params, callback)
 		callback({ items = {} })
 	end
 
-	-- TODO: add icon, documentation, kind, etc.
+	-- TODO: add icon, documentation, kind, etc. on "execute" cmd
 
 	-- Transform suggestions into completion items
 	local completion_items = {}
 	for _, item in ipairs(suggestions) do
-		-- TODO: need to fix Name and name in backend PR
 		table.insert(completion_items, {
-			label = item.Name or item.name,
+			label = item.name,
 			kind = "[DB]",
 		})
 	end
@@ -69,7 +65,7 @@ function source:get_trigger_characters()
 end
 
 function source:is_available()
-	return dbee.is_open() and self.connection.current_connection_id
+	return dbee.is_open() and self.connection.current_connection_id ~= nil
 end
 
 function source:get_debug_name()
