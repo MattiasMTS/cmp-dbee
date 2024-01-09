@@ -6,7 +6,7 @@ Autocompletion for [nvim-dbee](https://github.com/kndndrj/nvim-dbee/) database c
 
 - [x] schema suggestion.
 - [x] model suggestion (tables, views, functions, etc).
-- [ ] column(s) suggestion (using treesitter, see [queries](./lua/cmp-dbee/queries.lua will be added soon).
+- [x] column(s) suggestion (using treesitter, see [queries](./lua/cmp-dbee/queries.lua).
 - [ ] add support for completion engines:
   - [x] [nvim-cmp](https://github.com/hrsh7th/nvim-cmp)
   - [ ] [coc.nvim](https://github.com/neoclide/coc.nvim)
