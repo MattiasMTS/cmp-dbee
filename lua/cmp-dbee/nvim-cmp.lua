@@ -20,55 +20,55 @@ end
 function source:complete(params, callback)
 	local ctx = params.context
 	local schema_regex = "([^%.]+)%.+"
+	local suggestions = {}
 
 	-- match any non-whitespace character at the end of the line
 	local before = ctx.cursor_before_line:match("%S+$")
-	local nodes = self.queries:parse_node()
-	print("nodes", vim.inspect(nodes))
-	-- if nodes then
-	-- 	-- TODO: add lookup in structure for materialization
-	-- 	-- (if we want to support more than just table)
+	local nodes = self.queries:parse_node() or {}
+	-- print("nodes", vim.inspect(nodes))
 
-	-- 	local opts = {
-	-- 		schema = nodes[1],
-	-- 		table = nodes[2],
-	-- 		materialization = "table",
-	-- 	}
-	-- 	self.connection:get_columns(opts)
-	-- end
-
-	local suggestions = {}
+	-- User has ideally chosen table => suggest columns (bottom level)
+	if #nodes ~= 0 then
+		for _, node in ipairs(nodes) do
+			local columns = self.connection:get_columns(node) or {}
+			suggestions = vim.tbl_extend("force", suggestions, columns)
+		end
 
 	-- User has ideally chosen schema => suggest tables (middle level)
-	if before and before:match(schema_regex) then
-		suggestions = self.connection:get_schema_leafs(before)
+	elseif before and before:match(schema_regex) then
+		suggestions = self.connection:get_schema_leafs(before) or {}
+
 	-- User is typing at the beginning of the line => suggest schemas (top level)
 	else
-		suggestions = self.connection:get_schemas()
+		suggestions = self.connection:get_schemas() or {}
 	end
+
+	-- print("suggestions", vim.inspect(suggestions))
 
 	-- exit early if no suggestions are found
-	if not suggestions then
+	if #suggestions == 0 then
 		callback({ items = {} })
 	end
-
-	-- TODO: add icon, documentation, kind, etc.
 
 	-- Transform suggestions into completion items
 	local completion_items = {}
 	for _, item in ipairs(suggestions) do
-		table.insert(completion_items, { label = item.name })
+		table.insert(completion_items, {
+			label = item.name,
+			kind = "[DB]",
+		})
 	end
 
 	callback({ items = completion_items })
 end
 
-function source:get_trigger_characters()
-	return { ".", " " }
+-- TODO: check that dbee.is_open() is in the current buffer
+function source:is_available()
+	return dbee.is_open() and self.connection.current_connection_id ~= nil
 end
 
-function source:is_available()
-	return dbee.is_open() and self.connection.current_connection_id
+function source:get_trigger_characters()
+	return { ".", " " }
 end
 
 function source:get_debug_name()

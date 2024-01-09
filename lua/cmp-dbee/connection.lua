@@ -6,6 +6,7 @@ function Connection:new()
 	local cls = {
 		current_connection_id = nil,
 		structure = {},
+		columns = {},
 	}
 	setmetatable(cls, self)
 	self.__index = self
@@ -24,9 +25,6 @@ function Connection:clear_cache()
 end
 
 function Connection:on_current_connection_changed(data)
-	-- TODO: remove later
-	print("connection changed!", "before:", self.current_connection_id, "after:", data.conn_id)
-
 	-- if the connection is changed => change the current connection id
 	if self.current_connection_id ~= data.conn_id then
 		self:set_connection_id()
@@ -40,7 +38,11 @@ end
 
 function Connection:set_connection_id()
 	vim.schedule(function()
-		local conn_id = api.get_current_connection()
+		local ok, conn_id = pcall(api.get_current_connection)
+		if not ok then
+			return
+		end
+
 		if not conn_id then
 			vim.notify_once("No connection found.")
 			return
@@ -55,7 +57,10 @@ function Connection:set_structure()
 			return
 		end
 
-		local structure = api.connection_get_structure(self.current_connection_id)
+		local ok, structure = pcall(api.connection_get_structure, self.current_connection_id)
+		if not ok then
+			return
+		end
 		self.structure[self.current_connection_id] = structure
 	end)
 end
@@ -74,6 +79,24 @@ function Connection:get_schema_leafs(schema)
 		end
 	end
 	return {}
+end
+
+function Connection:get_columns(opts)
+	if not opts.schema or not opts.table then
+		return
+	end
+
+	local sha = self.current_connection_id .. "_" .. opts.schema .. "_" .. opts.table
+	if not self.columns[sha] then
+		local ok, columns = pcall(api.connection_get_columns, self.current_connection_id, opts)
+		if not ok or not columns then
+			return {}
+		end
+
+		self.columns[sha] = columns
+	end
+
+	return self.columns[sha]
 end
 
 return Connection

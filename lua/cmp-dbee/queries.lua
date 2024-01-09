@@ -3,7 +3,6 @@ local Queries = {}
 function Queries:new()
 	local o = {
 		filetype = "sql",
-		bufnr = vim.api.nvim_get_current_buf(),
 		-- we only capture schema + table combination.
 		-- having e.g. only "name" is ambiguous.
 		object_reference_query = [[
@@ -11,8 +10,8 @@ function Queries:new()
  relation
  (
   object_reference
-    schema: (identifier) @_schema
-    name: (identifier) @_name
+    schema: (identifier) @_schema (#not-eq? @_schema "")
+    name: (identifier) @_name (#not-eq?  @_name  "")
   )
 )
   ]],
@@ -23,7 +22,7 @@ function Queries:new()
 end
 
 function Queries:get_root()
-	local bufnr = self.bufnr or vim.api.nvim_get_current_buf()
+	local bufnr = vim.api.nvim_get_current_buf()
 	if vim.bo[bufnr].filetype ~= self.filetype then
 		vim.notify("Filetype is not " .. self.filetype)
 		return
@@ -35,7 +34,7 @@ function Queries:get_root()
 end
 
 function Queries:get_valid_nodes()
-	local bufnr = self.bufnr or vim.api.nvim_get_current_buf()
+	local bufnr = vim.api.nvim_get_current_buf()
 	if vim.bo[bufnr].filetype ~= self.filetype then
 		vim.notify("Filetype is not " .. self.filetype)
 		return
@@ -54,12 +53,13 @@ function Queries:get_valid_nodes()
 			end
 		end
 	end
+
 	return out
 end
 
 -- TODO: double check this on 2 incomplete sql statements
 function Queries:get_cursor_node()
-	local bufnr = self.bufnr or vim.api.nvim_get_current_buf()
+	local bufnr = vim.api.nvim_get_current_buf()
 	local win = vim.api.nvim_get_current_win()
 	local cursor_row = vim.api.nvim_win_get_cursor(win)[1]
 
@@ -68,6 +68,8 @@ function Queries:get_cursor_node()
 		return
 	end
 
+	-- get all the "statement" nodes in the current buffer/window.
+	-- to handle e.g. commented code at the top, middle or bottom
 	local nodes = self:get_valid_nodes()
 	if not nodes then
 		return
@@ -76,8 +78,8 @@ function Queries:get_cursor_node()
 	for _, node in ipairs(nodes) do
 		-- start_row, start_col, end_row, end_col
 		local start_row, _, end_row, _ = node:range()
-		-- +1 and +2 since treesitter is 0-based. +2 since we want to include the last line.
-		if start_row + 1 <= cursor_row and cursor_row <= end_row + 2 then
+		-- +2 since treesitter is 0-based and we want to include the last line.
+		if start_row <= cursor_row and cursor_row <= end_row + 2 then
 			return node
 		end
 	end
@@ -88,12 +90,13 @@ function Queries:parse_node(node)
 	if not current_node then
 		return
 	end
+	local node_type = current_node:type()
 
-	if current_node:type() == "cte" then
+	if node_type == "cte" or node_type == "from" then
 		return self:_parse(current_node)
-	elseif current_node:type() == "from" then
-		return self:_parse(current_node)
-	elseif current_node:type() == "select" then
+
+	-- TODO: support incomplete SELECT statement
+	elseif node_type == "select" then
 		-- go to next node to get the "from" clause
 		local next_node = current_node:next_named_sibling()
 		if not next_node then
@@ -106,13 +109,26 @@ function Queries:parse_node(node)
 end
 
 function Queries:_parse(node)
-	local out = {}
 	local start_row, start_col, _, _ = node:range()
 	local obj = vim.treesitter.query.parse(self.filetype, self.object_reference_query)
+	local current_bufr = vim.api.nvim_get_current_buf()
 
-	for _, o in obj:iter_captures(node, self.bufnr, start_row, start_col) do
-		local sql = vim.treesitter.get_node_text(o, self.bufnr)
-		table.insert(out, sql)
+	-- ones found our node => capture the query representing the schema+table
+	local captures = {}
+	for _, n in obj:iter_captures(node, current_bufr, start_row, start_col) do
+		local sql = vim.treesitter.get_node_text(n, current_bufr)
+		table.insert(captures, sql)
+	end
+
+	local out = {}
+	if #captures == 0 then
+		return out
+	end
+
+	for i = 1, #captures, 2 do
+		local schema = captures[i]
+		local model = captures[i + 1]
+		table.insert(out, { schema = schema, table = model })
 	end
 
 	return out
