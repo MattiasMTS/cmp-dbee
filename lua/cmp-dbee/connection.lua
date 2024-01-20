@@ -70,7 +70,7 @@ function Connection:get_schemas()
 	return self.structure[self.current_connection_id]
 end
 
-function Connection:get_schema_leafs(schema)
+function Connection:get_models(schema)
 	local structure = self.structure[self.current_connection_id]
 	if structure then
 		for _, node in ipairs(structure) do
@@ -82,14 +82,15 @@ function Connection:get_schema_leafs(schema)
 	return {}
 end
 
-function Connection:get_columns(opts)
-	if not opts.schema or not opts.table then
+function Connection:get_columns(schema, table)
+	if not schema or not table then
 		return
 	end
 
-	local sha = self.current_connection_id .. "_" .. opts.schema .. "_" .. opts.table
+	local sha = self.current_connection_id .. "_" .. schema .. "_" .. table
 	if not self.columns[sha] then
-		local ok, columns = pcall(api.connection_get_columns, self.current_connection_id, opts)
+		local ok, columns =
+			pcall(api.connection_get_columns, self.current_connection_id, { schema = schema, table = table })
 		if not ok or not columns then
 			return {}
 		end
