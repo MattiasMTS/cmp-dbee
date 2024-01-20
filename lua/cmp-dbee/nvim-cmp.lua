@@ -15,6 +15,38 @@ function source:new()
 	return cls
 end
 
+function source:get_documentation(item)
+	-- found schema + table
+	if not item.schema then
+		return "column: " .. item.name .. "\n" .. "type: " .. item.type
+	end
+
+	-- found schema => show all models
+	if item.name == item.schema then
+		local description = {}
+		local leafs = self.connection:get_schema_leafs(item.name)
+		for _, leaf in ipairs(leafs) do
+			table.insert(description, "\t" .. leaf.type .. ": " .. leaf.name .. "\n")
+		end
+		return "schema: " .. item.name .. "\n" .. table.concat(description)
+	end
+
+	-- found model => show type
+	if item.schema and item.name then
+		return "type: " .. item.type
+	end
+
+	return "NA"
+end
+
+function source:get_completion_item(item)
+	return {
+		label = item.name,
+		kind = vim.lsp.protocol.CompletionItemKind.Struct,
+		documentation = self:get_documentation(item),
+	}
+end
+
 ---@param params cmp.SourceCompletionApiParams
 ---@param callback fun(response: lsp.CompletionResponse|nil)
 function source:complete(params, callback)
@@ -25,7 +57,6 @@ function source:complete(params, callback)
 	-- match any non-whitespace character at the end of the line
 	local before = ctx.cursor_before_line:match("%S+$")
 	local nodes = self.queries:parse_node() or {}
-	-- print("nodes", vim.inspect(nodes))
 
 	-- User has ideally chosen table => suggest columns (bottom level)
 	if #nodes ~= 0 then
@@ -43,8 +74,6 @@ function source:complete(params, callback)
 		suggestions = self.connection:get_schemas() or {}
 	end
 
-	-- print("suggestions", vim.inspect(suggestions))
-
 	-- exit early if no suggestions are found
 	if #suggestions == 0 then
 		callback({ items = {} })
@@ -53,10 +82,7 @@ function source:complete(params, callback)
 	-- Transform suggestions into completion items
 	local completion_items = {}
 	for _, item in ipairs(suggestions) do
-		table.insert(completion_items, {
-			label = item.name,
-			kind = "[DB]",
-		})
+		table.insert(completion_items, self:get_completion_item(item))
 	end
 
 	callback({ items = completion_items })
@@ -67,7 +93,7 @@ function source:is_available()
 		return false
 	end
 
-	if self.connection.current_connection_id ~= nil then
+	if self.connection.current_connection_id == nil then
 		return false
 	end
 
