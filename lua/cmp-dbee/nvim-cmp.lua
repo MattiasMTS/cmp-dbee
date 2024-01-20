@@ -62,9 +62,16 @@ function source:complete(params, callback)
 	callback({ items = completion_items })
 end
 
--- TODO: check that dbee.is_open() is in the current buffer
 function source:is_available()
-	return dbee.is_open() and self.connection.current_connection_id ~= nil
+	if not dbee.is_open() then
+		return false
+	end
+
+	if self.connection.current_connection_id ~= nil then
+		return false
+	end
+
+	return true
 end
 
 function source:get_trigger_characters()
