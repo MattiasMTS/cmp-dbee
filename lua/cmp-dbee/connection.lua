@@ -2,6 +2,7 @@ local api = require("dbee").api.core
 
 local Connection = {}
 
+-- TODO: set timeout to the calls in case the connection is bad => otherwise the plugin will hang
 function Connection:new()
 	local cls = {
 		current_connection_id = nil,
@@ -44,7 +45,6 @@ function Connection:set_connection_id()
 		end
 
 		if not conn_id then
-			vim.notify_once("No connection found.")
 			return
 		end
 		self.current_connection_id = conn_id.id
@@ -59,6 +59,7 @@ function Connection:set_structure()
 
 		local ok, structure = pcall(api.connection_get_structure, self.current_connection_id)
 		if not ok then
+			vim.notify_once("cmp-dbee: no connection or structure found")
 			return
 		end
 		self.structure[self.current_connection_id] = structure
