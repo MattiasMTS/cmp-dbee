@@ -3,16 +3,15 @@ local Queries = {}
 function Queries:new()
 	local o = {
 		filetype = "sql",
-		-- we only capture schema + table combination.
-		-- having e.g. only "name" is ambiguous.
-		object_reference_query = [[
+		ts_query = [[
 (
  relation
  (
   object_reference
     schema: (identifier) @_schema (#not-eq? @_schema "")
     name: (identifier) @_name (#not-eq?  @_name  "")
-  )
+  )*
+ alias: (identifier) @_alias (#not-eq? @_alias "")
 )
   ]],
 	}
@@ -45,6 +44,8 @@ function Queries:get_valid_nodes()
 		return
 	end
 
+	-- capture all the "statement" nodes in the current buffer/window.
+	-- to handle e.g. commented code at the top, middle or bottom
 	local out = {}
 	for root_statement in root:iter_children() do
 		if root_statement:type() == "statement" then
@@ -57,7 +58,6 @@ function Queries:get_valid_nodes()
 	return out
 end
 
--- TODO: double check this on 2 incomplete sql statements
 function Queries:get_cursor_node()
 	local bufnr = vim.api.nvim_get_current_buf()
 	local win = vim.api.nvim_get_current_win()
@@ -75,47 +75,30 @@ function Queries:get_cursor_node()
 		return
 	end
 
+	-- go down the list of "statement" nodes and find
+	-- the one that contains the cursor.
 	for _, node in ipairs(nodes) do
 		-- start_row, start_col, end_row, end_col
-		local start_row, _, end_row, _ = node:range()
-		-- +2 since treesitter is 0-based and we want to include the last line.
-		if start_row <= cursor_row and cursor_row <= end_row + 2 then
+		local node_start_row, _, node_end_row, _ = node:range()
+		-- +2 and +1 since treesitter is 0-based and we want to include the last line.
+		if cursor_row >= node_start_row and cursor_row <= node_end_row + 2 then
 			return node
 		end
 	end
 end
 
-function Queries:parse_node(node)
+function Queries:get_metadata(node)
 	local current_node = node or self:get_cursor_node()
 	if not current_node then
-		return
+		return {}
 	end
-	local node_type = current_node:type()
 
-	if node_type == "cte" or node_type == "from" then
-		return self:_parse(current_node)
-
-	-- TODO: support incomplete SELECT statement
-	elseif node_type == "select" then
-		-- go to next node to get the "from" clause
-		local next_node = current_node:next_named_sibling()
-		if not next_node then
-			return
-		end
-		return self:_parse(next_node)
-	else
-		return
-	end
-end
-
-function Queries:_parse(node)
-	local start_row, start_col, _, _ = node:range()
-	local obj = vim.treesitter.query.parse(self.filetype, self.object_reference_query)
+	local obj = vim.treesitter.query.parse(self.filetype, self.ts_query)
 	local current_bufr = vim.api.nvim_get_current_buf()
 
 	-- ones found our node => capture the query representing the schema+table
 	local captures = {}
-	for _, n in obj:iter_captures(node, current_bufr, start_row, start_col) do
+	for _, n in obj:iter_captures(current_node, current_bufr) do
 		local sql = vim.treesitter.get_node_text(n, current_bufr)
 		table.insert(captures, sql)
 	end
@@ -125,10 +108,12 @@ function Queries:_parse(node)
 		return out
 	end
 
-	for i = 1, #captures, 2 do
+	-- order is based on the self.ts_query capture order.
+	for i = 1, #captures, 3 do
 		local schema = captures[i]
 		local model = captures[i + 1]
-		table.insert(out, { schema = schema, table = model })
+		local alias = captures[i + 2]
+		table.insert(out, { schema = schema, table = model, alias = alias })
 	end
 
 	return out
