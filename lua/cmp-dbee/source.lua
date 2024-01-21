@@ -10,6 +10,9 @@ function source:new()
 	local cls = {
 		connection = connection:new(),
 		queries = queries:new(),
+		latest_model = nil,
+		latest_schema = nil,
+		latest_metadata = {},
 	}
 	setmetatable(cls, self)
 	self.__index = self
@@ -25,9 +28,9 @@ function source:get_documentation(item)
 	-- found schema => show all models
 	if item.name == item.schema then
 		local description = {}
-		local leafs = self.connection:get_schema_leafs(item.name)
-		for _, leaf in ipairs(leafs) do
-			table.insert(description, "\t" .. leaf.type .. ": " .. leaf.name .. "\n")
+		local models = self.connection:get_models(item.name)
+		for _, m in ipairs(models) do
+			table.insert(description, "\t" .. m.type .. ": " .. m.name .. "\n")
 		end
 		return "schema: " .. item.name .. "\n" .. table.concat(description)
 	end
@@ -37,7 +40,7 @@ function source:get_documentation(item)
 		return "type: " .. item.type .. "\n" .. "schema: " .. item.schema
 	end
 
-	return "NA 😳"
+	return "unknown => open an issue!"
 end
 
 function source:convert_to_completion_item(item)
@@ -48,42 +51,50 @@ function source:convert_to_completion_item(item)
 	}
 end
 
-function source:get_completion()
-	local schema_regex = "([^%.]+)%.+"
-	local suggestions = {}
-
-	-- match any non-whitespace character at the end of the line
-	local before = utils.get_cursor_before_line():match("%S+$")
-	local nodes = self.queries:parse_node() or {}
-
-	-- User has ideally chosen table => suggest columns (bottom level)
-	if #nodes ~= 0 then
-		for _, node in ipairs(nodes) do
-			local columns = self.connection:get_columns(node) or {}
-			suggestions = vim.tbl_extend("force", suggestions, columns)
-		end
-
-	-- User has ideally chosen schema => suggest tables (middle level)
-	elseif before and before:match(schema_regex) then
-		suggestions = self.connection:get_schema_leafs(before) or {}
-
-	-- User is typing at the beginning of the line => suggest schemas (top level)
-	else
-		suggestions = self.connection:get_schemas() or {}
-	end
-
-	-- exit early if no suggestions are found
-	if #suggestions == 0 then
+function source:convert_many_to_completion_items(items)
+	if not items then
 		return {}
 	end
 
-	-- Transform suggestions into completion items
-	local completion_items = {}
-	for _, item in ipairs(suggestions) do
-		table.insert(completion_items, self:convert_to_completion_item(item))
+	if #items == 0 then
+		return {}
 	end
 
+	local completion_items = {}
+	for _, item in ipairs(items) do
+		table.insert(completion_items, self:convert_to_completion_item(item))
+	end
 	return completion_items
+end
+
+function source:get_completion()
+	local cursor_before_line = utils:get_cursor_before_line()
+	local schema = utils:captured_schema(cursor_before_line)
+	local model = utils:capture_table_based_on_schema(cursor_before_line)
+	local metadata = self.queries:get_metadata()
+
+	if #self.latest_metadata > 0 or #metadata > 0 then
+		if #metadata > 0 then
+			self.latest_metadata = metadata
+		end
+		for _, m in ipairs(self.latest_metadata) do
+			if cursor_before_line:match(m.alias .. "%.$") then
+				return self:convert_many_to_completion_items(self.connection:get_columns(m.schema, m.table))
+			end
+		end
+	end
+
+	if schema and model then
+		self.latest_schema, self.latest_model = schema, model
+		return self:convert_many_to_completion_items(self.connection:get_columns(schema, model))
+	end
+
+	if schema then
+		self.latest_schema = schema
+		return self:convert_many_to_completion_items(self.connection:get_models(schema))
+	end
+
+	return self:convert_many_to_completion_items(self.connection:get_schemas())
 end
 
 function source:is_available()
@@ -95,7 +106,7 @@ function source:is_available()
 end
 
 function source:get_trigger_characters()
-	return { ".", " " }
+	return { ".", " ", "(", ")", '"' }
 end
 
 function source:get_debug_name()
