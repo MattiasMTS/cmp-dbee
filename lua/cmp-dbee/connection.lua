@@ -2,12 +2,12 @@ local api = require("dbee").api.core
 
 local Connection = {}
 
--- TODO: set timeout to the calls in case the connection is bad => otherwise the plugin will hang
 function Connection:new()
 	local cls = {
 		current_connection_id = nil,
 		structure = {},
 		columns = {},
+		timeout_ms = 1000,
 	}
 	setmetatable(cls, self)
 	self.__index = self
@@ -37,33 +37,42 @@ function Connection:on_current_connection_changed(data)
 	end
 end
 
-function Connection:set_connection_id()
-	vim.schedule(function()
-		local ok, conn_id = pcall(api.get_current_connection)
-		if not ok then
-			return
-		end
+function Connection:set_connection_id_async()
+	local ok, conn_id = pcall(api.get_current_connection)
+	if not ok then
+		return
+	end
 
-		if not conn_id then
-			return
-		end
-		self.current_connection_id = conn_id.id
-	end)
+	if not conn_id then
+		return
+	end
+	self.current_connection_id = conn_id.id
+end
+
+function Connection:set_connection_id()
+	vim.defer_fn(function()
+		self:set_connection_id_async()
+	end, self.timeout_ms)
+end
+
+function Connection:set_structure_async()
+	if not self.current_connection_id then
+		return
+	end
+
+	local ok, structure = pcall(api.connection_get_structure, self.current_connection_id)
+	if not ok then
+		vim.notify_once("cmp-dbee no connection or structure found")
+		return
+	end
+
+	self.structure[self.current_connection_id] = structure
 end
 
 function Connection:set_structure()
-	vim.schedule(function()
-		if not self.current_connection_id then
-			return
-		end
-
-		local ok, structure = pcall(api.connection_get_structure, self.current_connection_id)
-		if not ok then
-			vim.notify_once("cmp-dbee: no connection or structure found")
-			return
-		end
-		self.structure[self.current_connection_id] = structure
-	end)
+	vim.defer_fn(function()
+		self:set_structure_async()
+	end, self.timeout_ms)
 end
 
 function Connection:get_schemas()
