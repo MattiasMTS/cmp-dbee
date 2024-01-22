@@ -1,19 +1,12 @@
-# WIP
+# cmp-dbee
 
 Autocompletion for [nvim-dbee](https://github.com/kndndrj/nvim-dbee/) database client.
 
-### TODOs
+> Still very much a WIP plugin => expect some breaking changes.
 
-- [x] schema suggestion.
-- [x] model suggestion (tables, views, functions, etc).
-- [x] column(s) suggestion (using treesitter, see [queries](./lua/cmp-dbee/queries.lua).
-- [ ] add support for completion engines:
-  - [x] [nvim-cmp](https://github.com/hrsh7th/nvim-cmp)
-  - [ ] [coc.nvim](https://github.com/neoclide/coc.nvim)
-  - [ ] [mini.completion](https://github.com/echasnovski/mini.completion)
-- [ ] add configuration
+## Usage
 
-Work is expected to be done within the upcoming weeks.
+cmp-dbee is using regex and treesitter to generate suggestions.
 
 ## Installation
 
@@ -35,3 +28,17 @@ Work is expected to be done within the upcoming weeks.
     },
   }
 ```
+
+### TODOs
+
+- [x] schema suggestion.
+- [x] model suggestion (tables, views, functions, etc).
+- [x] column(s) suggestion via aliases (using treesitter, see [queries](./lua/cmp-dbee/queries.lua); currently only tables supported)
+- [ ] add support for completion engines:
+  - [x] [nvim-cmp](https://github.com/hrsh7th/nvim-cmp)
+  - [ ] [coc.nvim](https://github.com/neoclide/coc.nvim)
+  - [ ] [mini.completion](https://github.com/echasnovski/mini.completion)
+- [ ] add configuration
+- [ ] add query highlighting
+
+Work is expected to be done within the upcoming weeks.

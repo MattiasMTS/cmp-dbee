@@ -1,0 +1,31 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  luacheck:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y luarocks
+          sudo luarocks install luacheck
+      - name: Make lint
+        run: make lint
+
+  stylua:
+    runs-on: ubuntu-22.04
+    name: Check Lua Style
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lua Style Check
+        uses: JohnnyMorganz/stylua-action@v3
+        with:
+          version: latest
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --color always --check lua
