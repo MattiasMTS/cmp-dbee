@@ -41,4 +41,29 @@ function M:capture_table_based_on_schema(line)
   return cursor_before_line:match("[from|FROM|JOIN|join]%s+[^%.%s]+%.([^%.%s]+)")
 end
 
+-- Function to check if a table exists in a list
+function M:table_exist_in_list(list, target_table)
+  for _, tbl in ipairs(list) do
+    if self:table_equal(tbl, target_table) then
+      return true
+    end
+  end
+  return false
+end
+
+-- Function to check if two tables are equal
+function M:table_equal(table1, table2)
+  if #table1 ~= #table2 then
+    return false
+  end
+
+  for k, v in pairs(table1) do
+    if table2[k] ~= v then
+      return false
+    end
+  end
+
+  return true
+end
+
 return M

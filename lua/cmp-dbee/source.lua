@@ -98,7 +98,21 @@ function source:get_completion()
     return self:convert_many_to_completion_items(self.connection:get_models(schema))
   end
 
-  return self:convert_many_to_completion_items(self.connection:get_schemas())
+  -- if we don't find anything => show schemas or aliases
+  local schemas = self.connection:get_schemas()
+  if #self.latest_metadata > 0 then
+    for _, m in ipairs(self.latest_metadata) do
+      if not m.alias then
+        goto continue
+      end
+      local alias = { name = m.alias, type = "alias" }
+      if not utils:table_exist_in_list(schemas, alias) then
+        table.insert(schemas, alias)
+      end
+      ::continue::
+    end
+  end
+  return self:convert_many_to_completion_items(schemas)
 end
 
 function source:is_available()
