@@ -11,7 +11,8 @@ local M = {}
 function M:setup() end
 
 function M:new()
-	return require("cmp-dbee.nvim-cmp"):new()
+  local o = require("cmp-dbee.nvim-cmp")
+  return o:new()
 end
 
 return M
