@@ -78,9 +78,13 @@ function source:get_completion()
       self.latest_metadata = metadata
     end
     for _, m in ipairs(self.latest_metadata) do
+      if not m.alias then
+        goto continue
+      end
       if cursor_before_line:match(m.alias .. "%.$") then
         return self:convert_many_to_completion_items(self.connection:get_columns(m.schema, m.table))
       end
+      ::continue::
     end
   end
 
