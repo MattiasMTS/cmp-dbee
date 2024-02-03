@@ -118,6 +118,13 @@ function Connection:get_columns(schema, table)
       return {}
     end
 
+    -- if any column name contain spaces -> wrap them in double quotes
+    for _, column in ipairs(columns) do
+      if column.name and column.name:match("%s") then
+        column.name = '"' .. column.name .. '"'
+      end
+    end
+
     self.columns[sha] = columns
   end
 
