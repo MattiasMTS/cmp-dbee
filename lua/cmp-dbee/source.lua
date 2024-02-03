@@ -94,7 +94,6 @@ function source:convert_to_completion_item(item)
     label = item.name,
     documentation = self:get_documentation(item),
     kind = vim.lsp.protocol.CompletionItemKind.Text,
-    -- TODO: add kind/mark etc
   }
 end
 
