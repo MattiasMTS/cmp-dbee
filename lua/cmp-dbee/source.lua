@@ -10,19 +10,61 @@ function source:new()
   local cls = {
     connection = connection:new(),
     queries = queries:new(),
-    latest_model = nil,
-    latest_schema = nil,
-    latest_metadata = {},
   }
   setmetatable(cls, self)
   self.__index = self
   return cls
 end
 
+function source:get_completion()
+  local cursor_before_line = utils:get_cursor_before_line()
+  local schema = utils:captured_schema(cursor_before_line)
+  local ts_structure = self.queries:get_metadata()
+
+  -- if we have an alias, show columns
+  if #ts_structure > 0 then
+    for _, m in ipairs(ts_structure) do
+      -- if we don't have an alias, skip
+      if not m.alias then
+        goto continue
+      end
+      if cursor_before_line:match("[%s%(]" .. m.alias .. "%.$") then
+        return self:convert_many_to_completion_items(self.connection:get_columns(m.schema, m.table))
+      end
+      ::continue::
+    end
+  end
+
+  -- if we have a schema, show models
+  if schema then
+    return self:convert_many_to_completion_items(self.connection:get_models(schema))
+  end
+
+  -- TODO: add ctes
+  -- if we don't find anything => show schemas/ctes/aliases
+  local schemas = self.connection:get_schemas()
+  if #ts_structure > 0 then
+    for _, m in ipairs(ts_structure) do
+      if not m.alias or m.alias == "" then
+        goto continue
+      end
+
+      local alias_found = { name = m.alias, type = "alias" }
+      if not utils:table_exist_in_list(schemas, alias_found) then
+        table.insert(schemas, alias_found)
+      end
+
+      ::continue::
+    end
+  end
+
+  return self:convert_many_to_completion_items(schemas)
+end
+
 function source:get_documentation(item)
   -- found schema + table => show columns + dtype
   if not item.schema then
-    return "column: " .. item.name .. "\n" .. "type: " .. item.type
+    return "name: " .. item.name .. "\n" .. "type: " .. item.type
   end
 
   -- found schema => show all models
@@ -44,19 +86,19 @@ function source:get_documentation(item)
 end
 
 function source:convert_to_completion_item(item)
+  if item.name == "no schema to show" then
+    return {}
+  end
   return {
     label = item.name,
-    kind = vim.lsp.protocol.CompletionItemKind.Struct,
     documentation = self:get_documentation(item),
+    kind = vim.lsp.protocol.CompletionItemKind.Text,
+    -- TODO: add kind/mark etc
   }
 end
 
 function source:convert_many_to_completion_items(items)
-  if not items then
-    return {}
-  end
-
-  if #items == 0 then
+  if not items or #items == 0 then
     return {}
   end
 
@@ -65,54 +107,6 @@ function source:convert_many_to_completion_items(items)
     table.insert(completion_items, self:convert_to_completion_item(item))
   end
   return completion_items
-end
-
-function source:get_completion()
-  local cursor_before_line = utils:get_cursor_before_line()
-  local schema = utils:captured_schema(cursor_before_line)
-  local model = utils:capture_table_based_on_schema(cursor_before_line)
-  local metadata = self.queries:get_metadata()
-
-  if #self.latest_metadata > 0 or #metadata > 0 then
-    if #metadata > 0 then
-      self.latest_metadata = metadata
-    end
-    for _, m in ipairs(self.latest_metadata) do
-      if not m.alias then
-        goto continue
-      end
-      if cursor_before_line:match(m.alias .. "%.$") then
-        return self:convert_many_to_completion_items(self.connection:get_columns(m.schema, m.table))
-      end
-      ::continue::
-    end
-  end
-
-  if schema and model then
-    self.latest_schema, self.latest_model = schema, model
-    return self:convert_many_to_completion_items(self.connection:get_columns(schema, model))
-  end
-
-  if schema then
-    self.latest_schema = schema
-    return self:convert_many_to_completion_items(self.connection:get_models(schema))
-  end
-
-  -- if we don't find anything => show schemas or aliases
-  local schemas = self.connection:get_schemas()
-  if #self.latest_metadata > 0 then
-    for _, m in ipairs(self.latest_metadata) do
-      if not m.alias then
-        goto continue
-      end
-      local alias = { name = m.alias, type = "alias" }
-      if not utils:table_exist_in_list(schemas, alias) then
-        table.insert(schemas, alias)
-      end
-      ::continue::
-    end
-  end
-  return self:convert_many_to_completion_items(schemas)
 end
 
 function source:is_available()
@@ -124,7 +118,7 @@ function source:is_available()
 end
 
 function source:get_trigger_characters()
-  return { ".", " ", "(", ")", '"' }
+  return { ".", " ", "(" }
 end
 
 function source:get_debug_name()
