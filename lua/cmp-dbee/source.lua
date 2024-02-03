@@ -40,21 +40,22 @@ function source:get_completion()
     return self:convert_many_to_completion_items(self.connection:get_models(schema))
   end
 
-  -- TODO: add ctes
   -- if we don't find anything => show schemas/ctes/aliases
   local schemas = self.connection:get_schemas()
   if #ts_structure > 0 then
+    local rv = {}
     for _, m in ipairs(ts_structure) do
-      if not m.alias or m.alias == "" then
-        goto continue
+      if m.alias then
+        rv = { name = m.alias, type = "alias" }
       end
 
-      local alias_found = { name = m.alias, type = "alias" }
-      if not utils:table_exist_in_list(schemas, alias_found) then
-        table.insert(schemas, alias_found)
+      if m.cte then
+        rv = { name = m.cte, type = "cte" }
       end
 
-      ::continue::
+      if not utils:table_exist_in_list(schemas, rv) then
+        table.insert(schemas, rv)
+      end
     end
   end
 
@@ -93,7 +94,6 @@ function source:convert_to_completion_item(item)
     label = item.name,
     documentation = self:get_documentation(item),
     kind = vim.lsp.protocol.CompletionItemKind.Text,
-    -- TODO: add kind/mark etc
   }
 end
 
