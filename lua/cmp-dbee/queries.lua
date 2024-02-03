@@ -3,7 +3,7 @@ local Queries = {}
 function Queries:new()
   local o = {
     filetype = "sql",
-    ts_query = [[
+    query_object_reference = [[
 (
  relation
  (
@@ -14,6 +14,7 @@ function Queries:new()
  alias: (identifier) @_alias (#not-eq? @_alias "")
 )
   ]],
+    query_cte_references = [[( cte (identifier) @capture )]],
   }
   setmetatable(o, self)
   self.__index = self
@@ -95,10 +96,10 @@ function Queries:get_metadata(node)
     return {}
   end
 
-  local obj = vim.treesitter.query.parse(self.filetype, self.ts_query)
+  local obj = vim.treesitter.query.parse(self.filetype, self.query_object_reference)
   local current_bufr = vim.api.nvim_get_current_buf()
 
-  -- ones found our node => capture the query representing the schema+table
+  -- capture the schema, model and alias
   local captures = {}
   for _, n in obj:iter_captures(current_node, current_bufr) do
     local sql = vim.treesitter.get_node_text(n, current_bufr)
@@ -110,7 +111,6 @@ function Queries:get_metadata(node)
     return out
   end
 
-  -- order is based on the self.ts_query capture order.
   for i = 1, #captures, 3 do
     local schema = captures[i]
     local model = captures[i + 1]
@@ -118,7 +118,13 @@ function Queries:get_metadata(node)
     table.insert(out, { schema = schema, table = model, alias = alias })
   end
 
-  -- TODO: check for duplicate aliases -> keep the last one
+  -- capture the CTEs
+  local cte_references = vim.treesitter.query.parse(self.filetype, self.query_cte_references)
+  for _, n in cte_references:iter_captures(current_node, current_bufr) do
+    local cte = vim.treesitter.get_node_text(n, current_bufr)
+    table.insert(out, { schema = "", table = "", cte = cte })
+  end
+
   return out
 end
 
