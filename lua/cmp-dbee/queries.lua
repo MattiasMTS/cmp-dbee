@@ -44,18 +44,23 @@ function Queries:get_valid_nodes()
     return
   end
 
-  -- capture all the "statement" nodes in the current buffer/window.
-  -- to handle e.g. commented code at the top, middle or bottom
   local out = {}
-  for root_statement in root:iter_children() do
-    if root_statement:type() == "statement" then
-      for node in root_statement:iter_children() do
-        table.insert(out, node)
-      end
+  for root_nodes in root:iter_children() do
+    if root_nodes:type() == "statement" then
+      table.insert(out, root_nodes)
     end
   end
 
   return out
+end
+
+-- TODO: continue later here
+function Queries:higlight_node(node)
+  local namespace = vim.api.nvim_create_namespace("sql-nodes")
+  local bufnr = vim.api.nvim_get_current_buf()
+  local row_start, col_start, _, col_end = node:range()
+  vim.api.nvim_buf_clear_namespace(bufnr, namespace, row_start, col_end + 1)
+  vim.api.nvim_buf_add_highlight(bufnr, namespace, "PmenuThumb", row_start, col_start, col_end)
 end
 
 function Queries:get_cursor_node()
@@ -75,13 +80,10 @@ function Queries:get_cursor_node()
     return
   end
 
-  -- go down the list of "statement" nodes and find
-  -- the one that contains the cursor.
+  -- find the node block where the cursor is located
   for _, node in ipairs(nodes) do
-    -- start_row, start_col, end_row, end_col
-    local node_start_row, _, node_end_row, _ = node:range()
-    -- +2 and +1 since treesitter is 0-based and we want to include the last line.
-    if cursor_row >= node_start_row and cursor_row <= node_end_row + 2 then
+    local row_start, _, row_end, _ = node:range()
+    if cursor_row >= row_start and cursor_row <= row_end + 2 then
       return node
     end
   end
@@ -116,6 +118,7 @@ function Queries:get_metadata(node)
     table.insert(out, { schema = schema, table = model, alias = alias })
   end
 
+  -- TODO: check for duplicate aliases -> keep the last one
   return out
 end
 
