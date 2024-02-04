@@ -24,24 +24,22 @@ function source:get_completion()
   -- if we have an alias, show columns
   if #ts_structure > 0 then
     for _, m in ipairs(ts_structure) do
-      -- if we don't have an alias, skip
-      if not m.alias then
-        goto continue
+      -- if alias exists and cursor before is matching it from right to left => show columns
+      if m.alias and cursor_before_line:match("[%s%(]" .. m.alias .. "%.$") then
+        local columns = self.connection:get_columns(m.schema, m.table)
+        return self:convert_many_to_completion_items(columns)
       end
-      if cursor_before_line:match("[%s%(]" .. m.alias .. "%.$") then
-        return self:convert_many_to_completion_items(self.connection:get_columns(m.schema, m.table))
-      end
-      ::continue::
     end
   end
 
   -- if we have a schema, show models
   if schema then
-    return self:convert_many_to_completion_items(self.connection:get_models(schema))
+    local models = self.connection:get_models(schema)
+    return self:convert_many_to_completion_items(models)
   end
 
   -- if we don't find anything => show schemas/ctes/aliases
-  local schemas = self.connection:get_schemas()
+  local schemas = {}
   if #ts_structure > 0 then
     local rv = {}
     for _, m in ipairs(ts_structure) do
@@ -59,6 +57,8 @@ function source:get_completion()
     end
   end
 
+  -- extend with schemas from the connection so we don't modify the original list
+  vim.list_extend(schemas, self.connection:get_schemas())
   return self:convert_many_to_completion_items(schemas)
 end
 
