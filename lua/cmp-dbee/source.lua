@@ -10,6 +10,7 @@ function source:new()
   local cls = {
     connection = connection:new(),
     queries = queries:new(),
+    latest_ts_structure = {},
   }
   setmetatable(cls, self)
   self.__index = self
@@ -21,9 +22,13 @@ function source:get_completion()
   local schema = utils:captured_schema(cursor_before_line)
   local ts_structure = self.queries:get_metadata()
 
-  -- if we have an alias, show columns
   if #ts_structure > 0 then
-    for _, m in ipairs(ts_structure) do
+    self.latest_ts_structure = ts_structure
+  end
+
+  -- if we have an alias, show columns
+  if #self.latest_ts_structure > 0 then
+    for _, m in ipairs(self.latest_ts_structure) do
       -- if alias exists and cursor before is matching it from right to left => show columns
       if m.alias and cursor_before_line:match("[%s%(]" .. m.alias .. "%.$") then
         local columns = self.connection:get_columns(m.schema, m.table)
@@ -40,9 +45,9 @@ function source:get_completion()
 
   -- if we don't find anything => show schemas/ctes/aliases
   local schemas = {}
-  if #ts_structure > 0 then
+  if #self.latest_ts_structure > 0 then
     local rv = {}
-    for _, m in ipairs(ts_structure) do
+    for _, m in ipairs(self.latest_ts_structure) do
       if m.alias then
         rv = { name = m.alias, type = "alias" }
       end
