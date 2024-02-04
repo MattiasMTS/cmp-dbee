@@ -19,7 +19,7 @@ Feel free to open any issues or PRs as you seem fit!
 
 ## Showcase
 
-![cmp_dbee-2024-02-04_20_22](https://github.com/MattiasMTS/cmp-dbee/assets/86059470/8999362f-261d-4143-8403-6068a48f859b)
+https://github.com/MattiasMTS/cmp-dbee/assets/86059470/1a0141dd-cb4d-47ce-b510-148d654d9503
 
 ## Usage
 
