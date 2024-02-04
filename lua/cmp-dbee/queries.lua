@@ -90,7 +90,25 @@ function Queries:get_cursor_node()
   end
 end
 
-function Queries:get_metadata(node)
+function Queries:get_cte_references(node)
+  local current_node = node or self:get_cursor_node()
+  if not current_node then
+    return {}
+  end
+
+  local obj = vim.treesitter.query.parse(self.filetype, self.query_cte_references)
+  local current_bufr = vim.api.nvim_get_current_buf()
+
+  local out = {}
+  for _, n in obj:iter_captures(current_node, current_bufr) do
+    local found = vim.treesitter.get_node_text(n, current_bufr)
+    table.insert(out, { schema = "", table = "", cte = found })
+  end
+
+  return out
+end
+
+function Queries:get_schema_table_alias_references(node)
   local current_node = node or self:get_cursor_node()
   if not current_node then
     return {}
@@ -107,17 +125,6 @@ function Queries:get_metadata(node)
   end
 
   local out = {}
-  -- capture the CTEs
-  local cte_references = vim.treesitter.query.parse(self.filetype, self.query_cte_references)
-  for _, n in cte_references:iter_captures(current_node, current_bufr) do
-    local cte = vim.treesitter.get_node_text(n, current_bufr)
-    table.insert(out, { schema = "", table = "", cte = cte })
-  end
-
-  if #captures == 0 then
-    return out
-  end
-
   for i = 1, #captures, 3 do
     local schema = captures[i]
     local model = captures[i + 1]

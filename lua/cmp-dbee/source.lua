@@ -11,6 +11,7 @@ function source:new()
     connection = connection:new(),
     queries = queries:new(),
     latest_ts_structure = {},
+    latest_cte_references = {},
   }
   setmetatable(cls, self)
   self.__index = self
@@ -20,10 +21,15 @@ end
 function source:get_completion()
   local cursor_before_line = utils:get_cursor_before_line()
   local schema = utils:captured_schema(cursor_before_line)
-  local ts_structure = self.queries:get_metadata()
+  local ts_structure = self.queries:get_schema_table_alias_references()
+  local cte_references = self.queries:get_cte_references()
 
   if #ts_structure > 0 then
     self.latest_ts_structure = ts_structure
+  end
+
+  if #cte_references > 0 then
+    self.latest_cte_references = cte_references
   end
 
   -- if we have an alias, show columns
@@ -45,24 +51,31 @@ function source:get_completion()
 
   -- if we don't find anything => show schemas/ctes/aliases
   local schemas = {}
-  if #self.latest_ts_structure > 0 then
-    local rv = {}
-    for _, m in ipairs(self.latest_ts_structure) do
-      if m.alias then
-        rv = { name = m.alias, type = "alias" }
-      end
 
+  if #self.latest_cte_references > 0 then
+    for _, m in ipairs(self.latest_cte_references) do
       if m.cte then
-        rv = { name = m.cte, type = "cte" }
-      end
-
-      if not utils:table_exist_in_list(schemas, rv) then
-        table.insert(schemas, rv)
+        local rv = { name = m.cte, type = "cte" }
+        if not utils:table_exist_in_list(schemas, rv) then
+          table.insert(schemas, rv)
+        end
       end
     end
   end
 
-  -- extend with schemas from the connection so we don't modify the original list
+  if #self.latest_ts_structure > 0 then
+    for _, m in ipairs(self.latest_ts_structure) do
+      if m.alias then
+        local rv = { name = m.alias, type = "alias" }
+        if not utils:table_exist_in_list(schemas, rv) then
+          table.insert(schemas, rv)
+        end
+      end
+    end
+  end
+
+  -- extend with schemas from the connection
+  -- so we don't modify the original list
   vim.list_extend(schemas, self.connection:get_schemas())
   return self:convert_many_to_completion_items(schemas)
 end
