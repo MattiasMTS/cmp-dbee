@@ -6,13 +6,15 @@
 -- TODO: add installation instructions
 -- TODO: add vim.notify or errors where appropriate
 
+local dbee_cmp = require("cmp-dbee.nvim-cmp")
+
 local M = {}
 
 function M:setup() end
 
 function M:new()
-  local o = require("cmp-dbee.nvim-cmp")
-  return o:new()
+  local o = dbee_cmp:new()
+  return o
 end
 
 return M
