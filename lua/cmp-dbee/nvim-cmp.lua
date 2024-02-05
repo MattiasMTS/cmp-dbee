@@ -1,8 +1,9 @@
 local M = {}
+local source = require("cmp-dbee.source")
 
 function M:new()
   local cls = {
-    s = require("cmp-dbee.source"):new(),
+    s = source:new(),
   }
   setmetatable(cls, self)
   self.__index = self

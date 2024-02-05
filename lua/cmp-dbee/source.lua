@@ -128,11 +128,10 @@ function source:convert_many_to_completion_items(items)
 end
 
 function source:is_available()
-  if not dbee.is_open() or self.connection.current_connection_id == nil then
-    return false
-  end
-
-  return true
+  return dbee.is_core_loaded()
+    and dbee.is_ui_loaded()
+    and dbee.is_open()
+    and self.connection.current_connection_id ~= nil
 end
 
 function source:get_trigger_characters()
