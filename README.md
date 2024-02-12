@@ -36,7 +36,7 @@ TL;DR
 - CTEs
 - columns: name and dtype (by referencing aliases)
 
-By default, schema suggestion is generated whenever a user hits "space".
+By default, schema + model suggestion is generated whenever a user hits "space".
 At this point, the syntax for the SQL query isn't complete and the plugin
 therefore uses a little bit of regex to "find/match" the selected schema.
 
