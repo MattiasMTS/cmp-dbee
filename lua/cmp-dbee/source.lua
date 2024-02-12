@@ -74,9 +74,10 @@ function source:get_completion()
     end
   end
 
-  -- extend with schemas from the connection
+  -- extend with schemas + tables from the connection
   -- so we don't modify the original list
   vim.list_extend(schemas, self.connection:get_schemas())
+  vim.list_extend(schemas, self.connection:get_flatten_structure())
   return self:convert_many_to_completion_items(schemas)
 end
 
@@ -98,7 +99,19 @@ function source:get_documentation(item)
 
   -- found model => show type
   if item.schema and item.name then
-    return "type: " .. item.type .. "\n" .. "schema: " .. item.schema
+    local name = item.name
+    if name:match("%.") then
+      name = name:match("%.(.*)")
+    end
+    -- stylua: ignore
+    return "name: "
+      .. name
+      .. "\n"
+      .. "type: "
+      .. item.type
+      .. "\n"
+      .. "schema: "
+      .. item.schema
   end
 
   return "unknown => open an issue!"

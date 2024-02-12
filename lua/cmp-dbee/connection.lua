@@ -15,8 +15,8 @@ local Connection = {}
 function Connection:new()
   local cls = {
     current_connection_id = nil,
-    ---@type table<string, table>
     structure = {},
+    flatten_structure = {},
     columns = {},
     timeout_ms = 1000,
   }
@@ -84,6 +84,34 @@ function Connection:set_structure()
   vim.defer_fn(function()
     self:set_structure_async()
   end, self.timeout_ms)
+end
+
+function Connection:get_flatten_structure()
+  local exist = self.flatten_structure[self.current_connection_id]
+  if exist then
+    return exist
+  end
+
+  local flatten = {}
+  local structure = self.structure[self.current_connection_id]
+  if structure then
+    for _, node in ipairs(structure) do
+      if node.children then
+        for _, child in ipairs(node.children) do
+          print(vim.inspect(child))
+          local out = {
+            name = node.name .. "." .. child.name,
+            schema = node.name,
+            type = child.type,
+          }
+          table.insert(flatten, out)
+        end
+      end
+    end
+  end
+
+  self.flatten_structure[self.current_connection_id] = flatten
+  return flatten
 end
 
 function Connection:get_schemas()
