@@ -14,7 +14,8 @@ local Connection = {}
 
 function Connection:new()
   local cls = {
-    current_connection_id = nil,
+    current_connection_id = "",
+    current_database_id = "",
     structure = {},
     flatten_structure = {},
     columns = {},
@@ -28,12 +29,26 @@ function Connection:new()
     cls:on_current_connection_changed(data)
   end)
 
+  -- listen to all state changes
+  api.register_event_listener("current_database_changed", function(data)
+    cls:on_current_database_changed(data)
+  end)
+
   return cls
 end
 
 function Connection:clear_cache()
-  self.current_connection_id = nil
+  self.current_connection_id = ""
+  self.current_database_id = ""
+  self.flatten_structure = {}
   self.structure = {}
+end
+
+function Connection:on_current_database_changed(data)
+  -- if the database is changed => clear the structure
+  if self.current_database_id ~= data.db_name then
+    self:set_structure()
+  end
 end
 
 function Connection:on_current_connection_changed(data)
