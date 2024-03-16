@@ -1,6 +1,7 @@
 -- source is the source of the completion items.
 local source = {}
 
+local constants = require("cmp-dbee.constants")
 local connection = require("cmp-dbee.connection")
 local queries = require("cmp-dbee.queries")
 local dbee = require("dbee")
@@ -49,15 +50,15 @@ function source:get_completion()
     return self:convert_many_to_completion_items(models)
   end
 
-  -- if we don't find anything => show schemas/ctes/aliases
-  local schemas = {}
+  -- if we don't find anything => show keywords/schemas/ctes/aliases
+  local out = {}
 
   if #self.latest_cte_references > 0 then
     for _, m in ipairs(self.latest_cte_references) do
       if m.cte then
         local rv = { name = m.cte, type = "cte" }
-        if not utils:table_exist_in_list(schemas, rv) then
-          table.insert(schemas, rv)
+        if not utils:table_exist_in_list(out, rv) then
+          table.insert(out, rv)
         end
       end
     end
@@ -67,8 +68,8 @@ function source:get_completion()
     for _, m in ipairs(self.latest_ts_structure) do
       if m.alias then
         local rv = { name = m.alias, type = "alias" }
-        if not utils:table_exist_in_list(schemas, rv) then
-          table.insert(schemas, rv)
+        if not utils:table_exist_in_list(out, rv) then
+          table.insert(out, rv)
         end
       end
     end
@@ -76,13 +77,15 @@ function source:get_completion()
 
   -- extend with schemas + tables from the connection
   -- so we don't modify the original list
-  vim.list_extend(schemas, self.connection:get_schemas())
-  vim.list_extend(schemas, self.connection:get_flatten_structure())
-  return self:convert_many_to_completion_items(schemas)
+  vim.list_extend(out, self.connection:get_schemas())
+  vim.list_extend(out, self.connection:get_flatten_structure())
+  -- we add these last so we don't polluted the list with reserved keywords
+  vim.list_extend(out, constants.reserved_sql_keywords)
+  return self:convert_many_to_completion_items(out)
 end
 
 function source:get_documentation(item)
-  -- found schema + table => show columns + dtype
+  -- found schema + table => show columns + dtype or reserved_sql_keywords
   if not item.schema then
     return "name: " .. item.name .. "\n" .. "type: " .. item.type
   end
