@@ -144,8 +144,8 @@ function source:convert_many_to_completion_items(items)
 end
 
 function source:is_available()
-  return dbee.is_core_loaded()
-    and dbee.is_ui_loaded()
+  return dbee.api.core.is_loaded()
+    and dbee.api.ui.is_loaded()
     and dbee.is_open()
     and self.connection.current_connection_id ~= nil
 end
