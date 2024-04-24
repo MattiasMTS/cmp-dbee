@@ -125,13 +125,35 @@ function source:convert_to_completion_item(item)
     return {}
   end
   local kind_text = "text"
+  local kind_hl_group = "String"
 
-  if item.type ~= "" then
+  if not item.type or item.type ~= "" then
     kind_text = item.type
+    kind_hl_group = "Character"
+
+    if not item.schema then
+      kind_hl_group = "Structure"
+    end
   end
 
   if item.name == item.schema then
     kind_text = "schema"
+    kind_hl_group = "Constant"
+  end
+
+  if item.type == "keyword" then
+    kind_text = "keyword"
+    kind_hl_group = "Conditional"
+  end
+
+  if item.type == "alias" then
+    kind_text = "alias"
+    kind_hl_group = "Function"
+  end
+
+  if item.type == "cte" then
+    kind_text = "cte"
+    kind_hl_group = "Function"
   end
 
   return {
@@ -139,6 +161,7 @@ function source:convert_to_completion_item(item)
     documentation = self:get_documentation(item),
     cmp = {
       kind_text = kind_text,
+      kind_hl_group = kind_hl_group,
     },
   }
 end
