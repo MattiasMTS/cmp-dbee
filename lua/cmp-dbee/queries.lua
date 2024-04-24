@@ -1,5 +1,7 @@
 local Queries = {}
 
+-- TODO: add return type of these
+
 function Queries:new()
   local o = {
     filetype = "sql",
@@ -53,15 +55,6 @@ function Queries:get_valid_nodes()
   end
 
   return out
-end
-
--- TODO: continue later here
-function Queries:higlight_node(node)
-  local namespace = vim.api.nvim_create_namespace("sql-nodes")
-  local bufnr = vim.api.nvim_get_current_buf()
-  local row_start, col_start, _, col_end = node:range()
-  vim.api.nvim_buf_clear_namespace(bufnr, namespace, row_start, col_end + 1)
-  vim.api.nvim_buf_add_highlight(bufnr, namespace, "PmenuThumb", row_start, col_start, col_end)
 end
 
 function Queries:get_cursor_node()
