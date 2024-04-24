@@ -158,7 +158,12 @@ function source:convert_to_completion_item(item)
 
   return {
     label = item.name,
-    documentation = self:get_documentation(item),
+    documentation = {
+      kind = "Markdown",
+      value = "```\n" .. self:get_documentation(item) .. "\n```",
+    },
+    -- kind = "[DB]",
+    -- detail = "doc:", -- TODO:
     cmp = {
       kind_text = kind_text,
       kind_hl_group = kind_hl_group,
