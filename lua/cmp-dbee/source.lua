@@ -124,10 +124,22 @@ function source:convert_to_completion_item(item)
   if item.name == "no schema to show" then
     return {}
   end
+  local kind_text = "text"
+
+  if item.type ~= "" then
+    kind_text = item.type
+  end
+
+  if item.name == item.schema then
+    kind_text = "schema"
+  end
+
   return {
     label = item.name,
     documentation = self:get_documentation(item),
-    kind = vim.lsp.protocol.CompletionItemKind.Text,
+    cmp = {
+      kind_text = kind_text,
+    },
   }
 end
 

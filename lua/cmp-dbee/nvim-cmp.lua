@@ -14,7 +14,9 @@ end
 ---@param callback fun(response: lsp.CompletionResponse|nil)
 function M:complete(_, callback)
   local completion_items = self.s:get_completion()
-  callback { items = completion_items, mark = "[DB]" }
+  callback {
+    items = completion_items,
+  }
 end
 
 function M:is_available()
