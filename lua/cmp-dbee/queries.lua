@@ -1,9 +1,11 @@
 local Queries = {}
 
--- TODO: add return type of these
+--- @class Queries
 
+---
+---@return Queries
 function Queries:new()
-  local o = {
+  local cls = {
     filetype = "sql",
     query_object_reference = [[
 (
@@ -18,9 +20,10 @@ function Queries:new()
   ]],
     query_cte_references = [[( cte (identifier) @capture )]],
   }
-  setmetatable(o, self)
+  setmetatable(cls, self)
   self.__index = self
-  return o
+
+  return cls
 end
 
 function Queries:get_root()
@@ -83,6 +86,8 @@ function Queries:get_cursor_node()
   end
 end
 
+---@param node any
+---@return Item
 function Queries:get_cte_references(node)
   local current_node = node or self:get_cursor_node()
   if not current_node then
@@ -101,6 +106,8 @@ function Queries:get_cte_references(node)
   return out
 end
 
+---@param node any
+---@return Item
 function Queries:get_schema_table_alias_references(node)
   local current_node = node or self:get_cursor_node()
   if not current_node then

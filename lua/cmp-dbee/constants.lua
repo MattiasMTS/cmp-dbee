@@ -33,6 +33,7 @@ M.reserved_sql_keywords = {
   { name = "alter", type = "keyword", description = "" },
   { name = "alterand", type = "keyword", description = "" },
   { name = "amp", type = "keyword", description = "" },
+  { name = "analyse", type = "keyword", description = "" },
   { name = "analyze", type = "keyword", description = "" },
   { name = "and", type = "keyword", description = "" },
   { name = "ansidate", type = "keyword", description = "" },
