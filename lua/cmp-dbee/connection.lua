@@ -6,142 +6,161 @@
 local api = require("dbee").api.core
 
 ---@class Connection
----@field current_connection_id string
----@field structure table
+---@field id string
+---@field structures Structures
 ---@field columns table
 ---@field timeout_ms number
 local Connection = {}
 
-function Connection:new()
+---@class Structures
+---@field id string
+---@field children Children
+
+---@class Children
+---@field name string
+---@field schema string
+---@field type string
+---@field children Children
+
+---@class Item
+---@field name string
+---@field schema string
+---@field type string
+---@field alias string?
+---@field cte string?
+---@field description string?
+
+--- Constructor for Connection
+---@param cfg Config
+---@return Connection
+function Connection:new(cfg)
   local cls = {
-    current_connection_id = "",
-    current_database_id = "",
-    structure = {},
+    id = "",
+    db_name = "",
+    structures = {},
     flatten_structure = {},
     columns = {},
-    timeout_ms = 1000,
+    timeout_ms = cfg.connection.timeout_ms or 1000,
+    config = cfg,
   }
   setmetatable(cls, self)
   self.__index = self
 
-  -- listen to connection changes
+  -- TODO: add event bus for structure change
+
+  -- listen to switch in connections
   api.register_event_listener("current_connection_changed", function(data)
-    cls:on_current_connection_changed(data)
+    local on_current_connection_changed = function()
+      if cls.id ~= data.conn_id then
+        cls:set_id()
+      end
+
+      -- if the structure for the current connection is not yet cached => cache it
+      if not cls.structures[data.conn_id] then
+        cls:set_structure()
+      end
+    end
+    on_current_connection_changed()
   end)
 
-  -- listen to all state changes
+  -- listen to all database switch events
   api.register_event_listener("current_database_changed", function(data)
-    cls:on_current_database_changed(data)
+    local on_current_database_changed = function()
+      if cls.db_name ~= data.db_name then
+        cls:set_structure()
+      end
+    end
+    on_current_database_changed()
   end)
 
   return cls
 end
 
-function Connection:clear_cache()
-  self.current_connection_id = ""
-  self.current_database_id = ""
-  self.flatten_structure = {}
-  self.structure = {}
-end
+function Connection:set_id()
+  local _set_id_fn = function()
+    local ok, conn_id = pcall(api.get_current_connection)
+    if not ok then
+      return
+    end
 
-function Connection:on_current_database_changed(data)
-  -- if the database is changed => clear the structure
-  if self.current_database_id ~= data.db_name then
-    self:set_structure()
-  end
-end
-
-function Connection:on_current_connection_changed(data)
-  -- if the connection is changed => change the current connection id
-  if self.current_connection_id ~= data.conn_id then
-    self:set_connection_id()
+    if not conn_id then
+      return
+    end
+    self.id = conn_id.id
   end
 
-  -- if the structure for the current connection is not yet cached => cache it
-  if not self.structure[data.conn_id] then
-    self:set_structure()
-  end
-end
-
-function Connection:set_connection_id_async()
-  local ok, conn_id = pcall(api.get_current_connection)
-  if not ok then
-    return
-  end
-
-  if not conn_id then
-    return
-  end
-  self.current_connection_id = conn_id.id
-end
-
-function Connection:set_connection_id()
   vim.defer_fn(function()
-    self:set_connection_id_async()
+    _set_id_fn()
   end, self.timeout_ms)
 end
 
-function Connection:set_structure_async()
-  if not self.current_connection_id then
-    return
-  end
-
-  local ok, structure = pcall(api.connection_get_structure, self.current_connection_id)
-  if not ok then
-    vim.notify_once("cmp-dbee no connection or structure found")
-    return
-  end
-
-  self.structure[self.current_connection_id] = structure
-end
-
 function Connection:set_structure()
+  local _set_structure_fn = function()
+    if not self.id then
+      return
+    end
+
+    local ok, structure = pcall(api.connection_get_structure, self.id)
+    if not ok then
+      return
+    end
+
+    self.structures[self.id] = structure
+  end
+
   vim.defer_fn(function()
-    self:set_structure_async()
+    _set_structure_fn()
   end, self.timeout_ms)
 end
 
 function Connection:get_flatten_structure()
-  local exist = self.flatten_structure[self.current_connection_id]
+  local exist = self.flatten_structure[self.id]
   if exist then
     return exist
   end
 
-  local flatten = {}
-  local structure = self.structure[self.current_connection_id]
-  if structure then
-    for _, node in ipairs(structure) do
-      if node.children then
-        for _, child in ipairs(node.children) do
-          local out = {
+  local get_flatten_structure = function(iterable)
+    local out = {}
+    vim.tbl_map(function(node)
+      if #node.children > 0 then
+        vim.tbl_map(function(child)
+          table.insert(out, {
             name = node.name .. "." .. child.name,
             schema = node.name,
             type = child.type,
-          }
-          table.insert(flatten, out)
-        end
+            children = {},
+          })
+        end, node.children)
       end
-    end
+    end, iterable)
+
+    return out
   end
 
-  self.flatten_structure[self.current_connection_id] = flatten
-  return flatten
+  local structure = self.structures[self.id]
+  if structure then
+    local flatten = get_flatten_structure(structure)
+    self.flatten_structure[self.id] = flatten
+    return flatten
+  end
 end
 
 function Connection:get_schemas()
-  return self.structure[self.current_connection_id]
+  return self.structures[self.id]
 end
 
+--- Returns the models for the given schema.
 function Connection:get_models(schema)
-  local structure = self.structure[self.current_connection_id]
-  if structure then
-    for _, node in ipairs(structure) do
-      if schema:match(node.name) and node.children then
-        return node.children
-      end
+  local structure = self.structures[self.id]
+  if not structure then
+    return {}
+  end
+
+  for _, node in ipairs(structure) do
+    if schema:match(node.name) and node.children then
+      return node.children
     end
   end
-  return {}
 end
 
 function Connection:get_columns(schema, table)
@@ -149,13 +168,13 @@ function Connection:get_columns(schema, table)
     return
   end
 
-  local sha = self.current_connection_id .. "_" .. schema .. "_" .. table
+  local sha = self.id .. "_" .. schema .. "_" .. table
   if not self.columns[sha] then
-    local ok, columns = pcall(
-      api.connection_get_columns,
-      self.current_connection_id,
-      { schema = schema, table = table }
-    )
+    local input = {
+      schema = schema,
+      table = table,
+    }
+    local ok, columns = pcall(api.connection_get_columns, self.id, input)
     if not ok or not columns then
       return {}
     end

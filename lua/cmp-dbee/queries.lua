@@ -1,7 +1,11 @@
 local Queries = {}
 
+--- @class Queries
+
+---
+---@return Queries
 function Queries:new()
-  local o = {
+  local cls = {
     filetype = "sql",
     query_object_reference = [[
 (
@@ -16,9 +20,10 @@ function Queries:new()
   ]],
     query_cte_references = [[( cte (identifier) @capture )]],
   }
-  setmetatable(o, self)
+  setmetatable(cls, self)
   self.__index = self
-  return o
+
+  return cls
 end
 
 function Queries:get_root()
@@ -55,15 +60,6 @@ function Queries:get_valid_nodes()
   return out
 end
 
--- TODO: continue later here
-function Queries:higlight_node(node)
-  local namespace = vim.api.nvim_create_namespace("sql-nodes")
-  local bufnr = vim.api.nvim_get_current_buf()
-  local row_start, col_start, _, col_end = node:range()
-  vim.api.nvim_buf_clear_namespace(bufnr, namespace, row_start, col_end + 1)
-  vim.api.nvim_buf_add_highlight(bufnr, namespace, "PmenuThumb", row_start, col_start, col_end)
-end
-
 function Queries:get_cursor_node()
   local bufnr = vim.api.nvim_get_current_buf()
   local win = vim.api.nvim_get_current_win()
@@ -90,6 +86,8 @@ function Queries:get_cursor_node()
   end
 end
 
+---@param node any
+---@return Item
 function Queries:get_cte_references(node)
   local current_node = node or self:get_cursor_node()
   if not current_node then
@@ -108,6 +106,8 @@ function Queries:get_cte_references(node)
   return out
 end
 
+---@param node any
+---@return Item
 function Queries:get_schema_table_alias_references(node)
   local current_node = node or self:get_cursor_node()
   if not current_node then
