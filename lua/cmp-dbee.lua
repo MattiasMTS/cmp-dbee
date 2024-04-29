@@ -23,9 +23,9 @@ M.setup = function(opts)
   local user_opts = config.merge_defaults(opts)
 
   -- validate
-  local error_msg, ok = config.validate(user_opts)
+  local ok = config.validate(user_opts)
   if not ok then
-    error(string.format("invalid %s", error_msg))
+    return
   end
 
   M._on_attach(user_opts)

@@ -92,8 +92,8 @@ function Handler:get_completion()
 
   -- extend with schemas + tables from the connection
   -- so we don't modify the original list
-  vim.list_extend(out, self.connection:get_schemas())
-  vim.list_extend(out, self.connection:get_flatten_structure())
+  vim.list_extend(out, self.connection:get_schemas() or {})
+  vim.list_extend(out, self.connection:get_flatten_structure() or {})
   -- we add these last so we don't polluted the list with reserved keywords
   vim.list_extend(out, constants.reserved_sql_keywords)
   return self:convert_many_to_completion_items(out)

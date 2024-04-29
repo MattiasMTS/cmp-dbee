@@ -74,12 +74,16 @@ config.default = {
   },
 }
 
--- TODO:
 --- Validate the configuration
 ---@param cfg Config
----@return string,boolean
+---@return boolean
 function config.validate(cfg)
-  return "", true
+  assert(type(cfg) == "table", "config must be a table")
+  assert(cfg.connection, "config.connection must be a table")
+  assert(cfg.suggestions, "config.suggestions must be a table")
+  assert(cfg.cmp_menu, "config.cmp_menu must be a table")
+
+  return true
 end
 
 ---  Merge user configuration with defaults

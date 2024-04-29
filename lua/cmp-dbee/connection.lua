@@ -46,6 +46,10 @@ function Connection:new(cfg)
   setmetatable(cls, self)
   self.__index = self
 
+  -- NOTE: needed if user don't lazy load on sql filetype
+  cls:set_id()
+  cls:set_structure()
+
   -- TODO: add event bus for structure change
 
   -- listen to switch in connections
