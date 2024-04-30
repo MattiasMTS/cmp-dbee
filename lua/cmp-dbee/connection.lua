@@ -92,6 +92,7 @@ function Connection:set_id()
       return
     end
     self.id = conn_id.id
+    vim.notify_once("[cmp-dbee] Connection ID: " .. self.id)
   end
 
   vim.defer_fn(function()
@@ -107,6 +108,7 @@ function Connection:set_structure()
 
     local ok, structure = pcall(api.connection_get_structure, self.id)
     if not ok then
+      vim.notify_once("[cmp-dbee] No structure found for " .. self.id)
       return
     end
 
