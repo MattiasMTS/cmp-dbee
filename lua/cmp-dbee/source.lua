@@ -16,12 +16,13 @@ end
 
 function source:complete(_, callback)
   if not self.handler then
-    return callback()
+    return callback {}
   end
 
-  local completion_items = self.handler:get_completion()
+  local items = self.handler:get_completion()
   callback {
-    items = completion_items,
+    items = items,
+    isIncomplete = false,
   }
 end
 
@@ -30,7 +31,7 @@ function source:is_available()
 end
 
 function source:get_trigger_characters()
-  return { ".", " ", "(" }
+  return { '"', "`", "[", "]", ".", "(", ")" }
 end
 
 function source:get_debug_name()

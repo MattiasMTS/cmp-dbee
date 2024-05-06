@@ -191,6 +191,7 @@ function Handler:convert_to_completion_item(item)
   end
 
   return {
+    dup = 0,
     label = item.name,
     documentation = {
       kind = "Markdown",
