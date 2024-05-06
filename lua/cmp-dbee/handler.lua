@@ -14,14 +14,20 @@ local Handler = {}
 ---@field kind_hl_group string
 
 local constants = require("cmp-dbee.constants")
-local connection = require("cmp-dbee.connection")
-local queries = require("cmp-dbee.queries")
 local utils = require("cmp-dbee.utils")
 
 ---
 ---@param cfg Config
+---@param is_available boolean
 ---@return any
-function Handler:new(cfg)
+function Handler:new(cfg, is_available)
+  if not is_available then
+    return
+  end
+
+  local connection = require("cmp-dbee.connection")
+  local queries = require("cmp-dbee.queries")
+
   local cls = {
     conn = connection:new(cfg),
     queries = queries:new(),
