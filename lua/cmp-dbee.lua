@@ -14,8 +14,8 @@ M.setup = function(opts)
   local source = require("cmp-dbee.source")
   local config = require("cmp-dbee.config")
 
-  local okk, cmp = pcall(require, "cmp")
-  if not okk then
+  local has_nvim_cmp, cmp = pcall(require, "cmp")
+  if not has_nvim_cmp then
     return
   end
 
@@ -28,6 +28,7 @@ M.setup = function(opts)
     return
   end
 
+  -- register
   local s = source:new(user_opts)
   cmp.register_source("cmp-dbee", s)
 end
