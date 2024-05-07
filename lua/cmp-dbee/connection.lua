@@ -71,6 +71,7 @@ function Connection:new(cfg)
   api.register_event_listener("database_selected", function(data)
     local on_current_database_changed = function()
       if cls.db_name ~= data.database_name then
+        cls.flatten_structure[data.conn_id] = nil
         cls:set_structure()
       end
     end
