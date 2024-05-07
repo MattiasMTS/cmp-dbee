@@ -68,9 +68,9 @@ function Connection:new(cfg)
   end)
 
   -- listen to all database switch events
-  api.register_event_listener("current_database_changed", function(data)
+  api.register_event_listener("database_selected", function(data)
     local on_current_database_changed = function()
-      if cls.db_name ~= data.db_name then
+      if cls.db_name ~= data.database_name then
         cls:set_structure()
       end
     end
