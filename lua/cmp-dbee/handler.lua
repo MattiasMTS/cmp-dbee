@@ -14,16 +14,22 @@ local Handler = {}
 ---@field kind_hl_group string
 
 local constants = require("cmp-dbee.constants")
-local connection = require("cmp-dbee.connection")
-local queries = require("cmp-dbee.queries")
 local utils = require("cmp-dbee.utils")
 
 ---
 ---@param cfg Config
+---@param is_available boolean
 ---@return any
-function Handler:new(cfg)
+function Handler:new(cfg, is_available)
+  if not is_available then
+    return
+  end
+
+  local connection = require("cmp-dbee.connection")
+  local queries = require("cmp-dbee.queries")
+
   local cls = {
-    connection = connection:new(cfg),
+    conn = connection:new(cfg),
     queries = queries:new(),
     latest_ts_structure = {},
     latest_cte_references = {},
@@ -53,7 +59,7 @@ function Handler:get_completion()
     for _, m in ipairs(self.latest_ts_structure) do
       -- if alias exists and cursor before is matching it from right to left => show columns
       if m.alias and cursor_before_line:match("[%s%(]" .. m.alias .. "%.$") then
-        local columns = self.connection:get_columns(m.schema, m.table)
+        local columns = self.conn:get_columns(m.schema, m.table)
         return self:convert_many_to_completion_items(columns)
       end
     end
@@ -61,7 +67,7 @@ function Handler:get_completion()
 
   -- if we have a schema, show models
   if schema then
-    local models = self.connection:get_models(schema)
+    local models = self.conn:get_models(schema)
     return self:convert_many_to_completion_items(models)
   end
 
@@ -92,8 +98,8 @@ function Handler:get_completion()
 
   -- extend with schemas + tables from the connection
   -- so we don't modify the original list
-  vim.list_extend(out, self.connection:get_schemas() or {})
-  vim.list_extend(out, self.connection:get_flatten_structure() or {})
+  vim.list_extend(out, self.conn:get_schemas() or {})
+  vim.list_extend(out, self.conn:get_flatten_structure() or {})
   -- we add these last so we don't polluted the list with reserved keywords
   vim.list_extend(out, constants.reserved_sql_keywords)
   return self:convert_many_to_completion_items(out)
@@ -111,7 +117,7 @@ function Handler:get_documentation(n)
   -- found schema => show all models
   if n.name == n.schema then
     local description = {}
-    local models = self.connection:get_models(n.name)
+    local models = self.conn:get_models(n.name)
     for _, m in ipairs(models) do
       table.insert(description, "\t" .. m.type .. ": " .. m.name .. "\n")
     end
@@ -185,6 +191,7 @@ function Handler:convert_to_completion_item(item)
   end
 
   return {
+    dup = 0,
     label = item.name,
     documentation = {
       kind = "Markdown",
