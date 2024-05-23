@@ -3,12 +3,15 @@ local source = {}
 
 local dbee = require("dbee")
 local handler = require("cmp-dbee.handler")
-local is_available = dbee.api.core.is_loaded() and dbee.api.ui.is_loaded()
+
+function is_available()
+    return dbee.api.core.is_loaded() and dbee.api.ui.is_loaded()
+end
 
 --- Constructor for nvim-cmp source
 ---@param cfg Config
 function source:new(cfg)
-  local cls = { handler = handler:new(cfg, is_available) }
+  local cls = { cfg = cfg }
   setmetatable(cls, self)
   self.__index = self
   return cls
@@ -16,7 +19,11 @@ end
 
 function source:complete(_, callback)
   if not self.handler then
-    return callback {}
+    if is_available() then
+        self.handler = handler:new(self.cfg, true)
+    else
+        return callback {}
+    end
   end
 
   local items = self.handler:get_completion()
@@ -27,7 +34,7 @@ function source:complete(_, callback)
 end
 
 function source:is_available()
-  return is_available
+  return is_available()
 end
 
 function source:get_trigger_characters()
