@@ -77,3 +77,15 @@ leafs provides columns. This might change in the future.
     },
   }
 ```
+
+- Using **packer**:
+
+```lua
+   use({"hrsh7th/nvim-cmp", requires = {"MattiasMTS/cmp-dbee"}})
+   use{
+     "kndndrj/nvim-dbee",
+      run = function()
+        require("dbee").install()
+      end,
+   }
+```
