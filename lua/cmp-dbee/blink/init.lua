@@ -56,7 +56,6 @@ local function map_to_completion_items(db_structure)
       create_completion_item(
         schema.name,
         CompletionItemKind.Folder,
-        -- CompletionItemKind.Struct,
         "Type: " .. schema.type .. "\nSchema: " .. schema.schema,
         100
       )
@@ -67,7 +66,6 @@ local function map_to_completion_items(db_structure)
         items,
         create_completion_item(
           model.name,
-          -- CompletionItemKind.Text,
           CompletionItemKind.Class,
           "Type: " .. model.type .. "\nName: " .. model.name .. "\nSchema: " .. model.schema,
           100
@@ -117,7 +115,6 @@ local function map_models_to_completion_items(models, schema)
       items,
       create_completion_item(
         model.name,
-        -- CompletionItemKind.Text,
         CompletionItemKind.Class,
         "Type: " .. model.type .. "\nName: " .. model.name .. "\nSchema: " .. schema,
         100
