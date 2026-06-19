@@ -3,12 +3,12 @@
 [![ci](https://github.com/MattiasMTS/cmp-dbee/actions/workflows/ci.yml/badge.svg)](https://github.com/MattiasMTS/cmp-dbee/actions/workflows/ci.yml)
 
 <!--toc:start-->
-
 - [cmp-dbee](#cmp-dbee)
   - [Showcase](#showcase)
   - [Usage](#usage)
     - [Suggestions](#suggestions)
   - [Installation](#installation)
+      * [For blink.cmp](#for-blinkcmp)
   <!--toc:end-->
 
 Autocompletion plugin for [nvim-dbee](https://github.com/kndndrj/nvim-dbee/) database client.
@@ -88,4 +88,40 @@ leafs provides columns. This might change in the future.
         require("dbee").install()
       end,
    }
+```
+
+### For blink.cmp
+
+- Using **lazy**:
+
+```lua
+  {
+    "saghen/blink.cmp",
+    dependencies = {
+       "saghen/blink.lib",
+      {
+        "MattiasMTS/cmp-dbee",
+        dependencies = {
+          {"kndndrj/nvim-dbee"}
+        },
+        ft = "sql", -- optional but good to have
+        opts = {}, -- needed
+        branch = "ms/v2"
+      },
+    },
+    -- Build for blink.cmp v2
+    build = function()
+        require("blink.cmp").build():pwait()
+    end,
+    opts = {
+      sources = {
+        per_filetype = {
+            sql = { "dbee", "buffer" },
+        },
+        providers = {
+          dbee = { name = "Dbee", module = "cmp-dbee.blink" },
+        }
+      },
+    },
+  }
 ```
